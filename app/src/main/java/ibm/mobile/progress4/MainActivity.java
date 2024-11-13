@@ -1,6 +1,8 @@
 package ibm.mobile.progress4;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -10,15 +12,9 @@ import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
-import org.w3c.dom.Text;
-
 public class MainActivity extends AppCompatActivity {
-    private ProgressBar progressBarConsumed;
-    private float progr = 0;
-    private static final int REQUEST_MENU = 101;
-    private static final int REQUEST_MENU_LUNCH = 102;
-    private static final int REQUEST_MENU_DINNER = 103;
 
+    private FragmentManager fragmentManager;
     private int kalori;
     private int kaloriMakan;
     private int kaloriKonsumsiPagi = 0;
@@ -31,162 +27,64 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Ambil data
+        // Inisialisasi FragmentManager
+        fragmentManager = getSupportFragmentManager();
+
+        // Tampilkan kedua fragment
+        loadFragments();
+
+        // Ambil data dari intent
         Intent intentU = getIntent();
         String gender = intentU.getStringExtra("GENDER_INPUT");
         String inputTextBB = intentU.getStringExtra("BB_INPUT");
         String inputTextTB = intentU.getStringExtra("TB_INPUT");
         String inputTextU = intentU.getStringExtra("UMUR_INPUT");
 
-        TextView sarapan = findViewById(R.id.TargetFixSarapan);
-        TextView lunch = findViewById(R.id.TargetFixLunch);
-        TextView dinner = findViewById(R.id.TargetFixDinner);
-        TextView caloriesLeft = findViewById(R.id.CaloriesLeftNumb);
-        TextView caloriesEaten = findViewById(R.id.CaloriesEatenNumb);
+        // Hitung kalori berdasarkan gender
+        hitungKalori(gender, inputTextBB, inputTextTB, inputTextU);
+    }
 
-        int bb = Integer.parseInt(inputTextBB);
-        int tb = Integer.parseInt(inputTextTB);
-        int umr = Integer.parseInt(inputTextU);
+    private void loadFragments() {
+        FragmentTransaction transaction = fragmentManager.beginTransaction();
+        transaction.replace(R.id.container_target, new FragmentTarget());
+        transaction.replace(R.id.container_mealtime, new FragmentMealtime());
+        transaction.commit();
+    }
 
-        progressBarConsumed = findViewById(R.id.progressBar);
+    private void hitungKalori(String gender, String bb, String tb, String umr) {
+        int beratBadan = Integer.parseInt(bb);
+        int tinggiBadan = Integer.parseInt(tb);
+        int umur = Integer.parseInt(umr);
 
-        // Inisialisasi SharedPreferences
-        sharedPreferences = getPreferences(MODE_PRIVATE);
-
-        // Target fix sarapan, makan siang, makan malam
         if (gender.equals("pria")) {
-            kalori = (int) Math.ceil(66.5 + (13.75 * bb) + (5.003 * tb) - (6.75 * umr));
-            kaloriMakan = 0;
-
-            int sarapanPria = (int) Math.ceil(0.25 * kalori);
-            int lunchPria = (int) Math.ceil(0.4 * kalori);
-            int dinnerPria = (int) Math.ceil(0.35 * kalori);
-
-            sarapan.setText(Integer.toString(sarapanPria));
-            lunch.setText(Integer.toString(lunchPria));
-            dinner.setText(Integer.toString(dinnerPria));
-            caloriesLeft.setText(Integer.toString(kalori));
-            caloriesEaten.setText(Integer.toString(kaloriMakan));
-
+            kalori = (int) Math.ceil(66.5 + (13.75 * beratBadan) + (5.003 * tinggiBadan) - (6.75 * umur));
         } else if (gender.equals("wanita")) {
-            kalori = (int) Math.ceil(655.1 + (9.563 * bb) + (1.850 * tb) - (4.676 * umr));
-            kaloriMakan = 0;
-
-            int sarapanWanita = (int) Math.ceil(0.25 * kalori);
-            int lunchWanita = (int) Math.ceil(0.4 * kalori);
-            int dinnerWanita = (int) Math.ceil(0.35 * kalori);
-
-            sarapan.setText(Integer.toString(sarapanWanita));
-            lunch.setText(Integer.toString(lunchWanita));
-            dinner.setText(Integer.toString(dinnerWanita));
-            caloriesLeft.setText(Integer.toString(kalori));
-            caloriesEaten.setText(Integer.toString(kaloriMakan));
+            kalori = (int) Math.ceil(655.1 + (9.563 * beratBadan) + (1.850 * tinggiBadan) - (4.676 * umur));
         }
 
-        // Tombol sarapan, makan siang, makan malam
-        Button btn_sarapan = findViewById(R.id.buttonSarapan);
-        Button btn_lunch = findViewById(R.id.buttonLunch);
-        Button btn_dinner = findViewById(R.id.buttonDinner);
-
-        btn_sarapan.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String time = "sarapan";
-                startDaftarMenuActivity(time);
-            }
-        });
-
-        btn_lunch.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String time = "lunch";
-                startDaftarMenuActivity(time);
-            }
-        });
-
-        btn_dinner.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String time = "dinner";
-                startDaftarMenuActivity(time);
-            }
-        });
-    }
-
-    private void startDaftarMenuActivity(String time) {
-        Intent intent = new Intent(MainActivity.this, DaftarMenuActivity.class);
-        intent.putExtra("TIME", time);
-        startActivityForResult(intent, getRequestCode(time));
-    }
-
-    private int getRequestCode(String time) {
-        switch (time) {
-            case "sarapan":
-                return REQUEST_MENU;
-            case "lunch":
-                return REQUEST_MENU_LUNCH;
-            case "dinner":
-                return REQUEST_MENU_DINNER;
-            default:
-                return -1;
-        }
+        // Bagikan nilai ke fragment menggunakan SharedPreferences
+        sharedPreferences = getPreferences(MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putInt("kaloriTarget", kalori);
+        editor.putInt("kaloriSarapan", (int) Math.ceil(0.25 * kalori));
+        editor.putInt("kaloriLunch", (int) Math.ceil(0.4 * kalori));
+        editor.putInt("kaloriDinner", (int) Math.ceil(0.35 * kalori));
+        editor.apply();
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        String time = getTimeFromRequestCode(requestCode);
-
         if (resultCode == RESULT_OK) {
             int consumedCalories = data.getIntExtra("KONSUMSI", 0);
-            String namaMakanan = data.getStringExtra("MAKANAN");
+            String time = data.getStringExtra("TIME");
 
+            // Update konsumsi kalori
             updateKaloriKonsumsi(time, consumedCalories);
-            updateSharedPreferences();
 
-            float progressPercentage = (float) (kaloriKonsumsiPagi+kaloriKonsumsiSiang+kaloriKonsumsiMalam) / kalori * 100;
-
-            // Set nilai progress bar
-            progressBarConsumed.setProgress((int) progressPercentage);
-
-            // Set TextView KonsumsiSarapan, KonsumsiLunch, atau KonsumsiDinner sesuai waktu
-            TextView konsumsiTextView;
-            switch (time) {
-                case "sarapan":
-                    konsumsiTextView = findViewById(R.id.TargetSarapan);
-                    break;
-                case "lunch":
-                    konsumsiTextView = findViewById(R.id.TargetLunch);
-                    break;
-                case "dinner":
-                    konsumsiTextView = findViewById(R.id.TargetDinner);
-                    break;
-                default:
-                    konsumsiTextView = null;
-            }
-
-            if (konsumsiTextView != null) {
-                konsumsiTextView.setText(String.valueOf(consumedCalories));
-
-                TextView caloriesLeft = findViewById(R.id.CaloriesLeftNumb);
-                TextView caloriesEaten = findViewById(R.id.CaloriesEatenNumb);
-                TextView foodNameSarapan = findViewById(R.id.InfoMakan);
-                TextView foodNameLunch = findViewById(R.id.InfoMakanLunch);
-                TextView foodNameDinner = findViewById(R.id.InfoMakanDinner);
-
-                kalori -= consumedCalories;
-                caloriesLeft.setText(Integer.toString(kalori));
-                caloriesEaten.setText(Integer.toString(consumedCalories));
-
-                if(time.equals("sarapan")) {
-                    foodNameSarapan.setText(namaMakanan);
-                } else if(time.equals("lunch")) {
-                    foodNameLunch.setText(namaMakanan);
-                } else if(time.equals("dinner")) {
-                    foodNameDinner.setText(namaMakanan);
-                }
-            }
+            // Update fragment
+            loadFragments();
         }
     }
 
@@ -198,26 +96,11 @@ public class MainActivity extends AppCompatActivity {
         } else if (time.equals("dinner")) {
             kaloriKonsumsiMalam += consumedCalories;
         }
-    }
 
-    private void updateSharedPreferences() {
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putInt("kaloriKonsumsiPagi", kaloriKonsumsiPagi);
         editor.putInt("kaloriKonsumsiSiang", kaloriKonsumsiSiang);
         editor.putInt("kaloriKonsumsiMalam", kaloriKonsumsiMalam);
         editor.apply();
-    }
-
-    private String getTimeFromRequestCode(int requestCode) {
-        switch (requestCode) {
-            case REQUEST_MENU:
-                return "sarapan";
-            case REQUEST_MENU_LUNCH:
-                return "lunch";
-            case REQUEST_MENU_DINNER:
-                return "dinner";
-            default:
-                return "";
-        }
     }
 }
